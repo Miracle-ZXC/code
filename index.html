@@ -2,60 +2,319 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Розыгрыш Baboss</title>
     <script src="https://telegram.org/js/telegram-web-app.js?version=7.2"></script>
     <style>
-        body { background: #000; color: #fff; font-family: Arial; display: flex; flex-direction: column; align-items: center; }
-        .cards-container { height: 300px; overflow: hidden; position: relative; width: 200px; border: 2px solid gold; }
-        .cards { position: absolute; top: 0; left: 0; transition: top 5s cubic-bezier(0.22, 0.92, 0.7, 1.0); }
-        .card { height: 100px; background: #333; margin: 10px 0; text-align: center; line-height: 100px; border-radius: 10px; }
-        .arrow { position: absolute; left: -50px; top: 50%; transform: translateY(-50%); border: 20px solid transparent; border-right-color: white; }
-        #startButton { margin-top: 20px; padding: 10px; }
-        #result { margin-top: 20px; font-size: 24px; }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            background: radial-gradient(circle, #2a1a3e 0%, #0f1126 100%);
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+        #title {
+            font-size: 42px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 1), 0 0 5px rgba(255, 215, 0, 0.8);
+            margin-bottom: 10px;
+            animation: glow-title 2s infinite alternate;
+            font-family: 'Playfair Display', serif;
+        }
+        #subtitle {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            margin-bottom: 20px;
+            font-family: 'Roboto', sans-serif;
+        }
+        @keyframes glow-title {
+            0% { text-shadow: 0 0 15px rgba(255, 215, 0, 1), 0 0 5px rgba(255, 215, 0, 0.8); }
+            100% { text-shadow: 0 0 25px rgba(255, 215, 0, 1.2), 0 0 10px rgba(255, 215, 0, 1); }
+        }
+        .cards-container {
+            position: relative;
+            width: min(300px, 70vw);
+            height: 400px;
+            margin-bottom: 20px;
+            border: 6px solid #ffd700;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            background: #1a1a2e;
+            overflow: hidden;
+        }
+        .arrow {
+            position: absolute;
+            top: 50%;
+            left: -20px;
+            transform: translateY(-50%) rotate(-90deg);
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 20px solid #ffffff;
+            z-index: 10;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+        }
+        .cards-track {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: transform 5s cubic-bezier(0.22, 0.92, 0.7, 1.0);
+        }
+        .card {
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(45deg, #d81b7a, #ffeb3b);
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .card.stop {
+            animation: glow 1s ease-in-out;
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+            50% { box-shadow: 0 0 20px rgba(255, 215, 0, 1.2); }
+            100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+        }
+        .center-button {
+            padding: 8px 25px;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            background: linear-gradient(45deg, #d81b7a, #ffeb3b);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: pulse 2s infinite;
+        }
+        .center-button:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+        }
+        .center-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            animation: none;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 12px rgba(255, 215, 0, 1);
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #closeButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            background: linear-gradient(45deg, #ff6f20, #d81b7a);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #closeButton:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Playfair+Display:wght@700&family=Roboto:wght@700&display=css');
     </style>
 </head>
 <body>
-    <h1>Розыгрыш</h1>
+    <h1 id="title">Baboss Casino</h1>
+    <h2 id="subtitle">Розыгрыш</h2>
     <div class="cards-container">
         <div class="arrow"></div>
-        <div id="cards" class="cards"></div>
+        <div class="cards-track" id="cardsTrack"></div>
     </div>
-    <button id="startButton">Запустить</button>
+    <button id="spinButton" class="center-button">Крутить!</button>
     <div id="result"></div>
+    <button id="closeButton" style="display: none;">Закрыть</button>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const participants = JSON.parse(urlParams.get('participants') || '[]');
-        const draw_id = urlParams.get('draw_id') || 'unknown';
-
-        const cardsDiv = document.getElementById('cards');
-        const startButton = document.getElementById('startButton');
+        const cardsTrack = document.getElementById('cardsTrack');
+        const spinButton = document.getElementById('spinButton');
         const resultDiv = document.getElementById('result');
+        const closeButton = document.getElementById('closeButton');
 
-        // Генерация карточек (дублируем список для seamless скролла)
-        const extendedParticipants = [...participants, ...participants, ...participants];
-        extendedParticipants.forEach(id => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.textContent = `ID: ${id}`;
-            cardsDiv.appendChild(card);
+        const urlParams = new URLSearchParams(window.location.search);
+        const giveaway_id = urlParams.get('giveaway_id') || 'unknown';
+        let participants = [];
+        try {
+            const encoded = urlParams.get('participants');
+            participants = JSON.parse(atob(encoded));
+        } catch (e) {
+            console.error('Failed to parse participants:', e);
+            resultDiv.innerHTML = '❌ Ошибка загрузки участников';
+            spinButton.disabled = true;
+            spinButton.style.display = 'none';
+            closeButton.style.display = 'block';
+        }
+
+        const prizes = ["20 FS", "500 ₽", "40 FS", "1000 ₽", "60 FS", "1500 ₽", "100 FS", "3000 ₽"];
+        const weights = [0.4, 0.4, 0.05, 0.05, 0.035, 0.035, 0.015, 0.015];
+        const cardHeight = 90; // Высота карточки + отступы
+        let isSpinning = false;
+        let currentPosition = 0;
+
+        // Создаем карточки
+        function createCards() {
+            cardsTrack.innerHTML = '';
+            participants.forEach(participant => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.textContent = participant.username;
+                card.dataset.userId = participant.user_id;
+                cardsTrack.appendChild(card);
+            });
+            // Дублируем карточки для бесконечной прокрутки
+            participants.forEach(participant => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.textContent = participant.username;
+                card.dataset.userId = participant.user_id;
+                cardsTrack.appendChild(card);
+            });
+        }
+
+        if (participants.length > 0) {
+            createCards();
+        } else {
+            resultDiv.innerHTML = '❌ Нет участников';
+            spinButton.disabled = true;
+            spinButton.style.display = 'none';
+            closeButton.style.display = 'block';
+        }
+
+        // Проверка Telegram Web App
+        window.addEventListener('load', () => {
+            if (window.Telegram?.WebApp) {
+                console.log(`Telegram WebApp initialized, version: ${window.Telegram.WebApp.version}`);
+                window.Telegram.WebApp.ready();
+            } else {
+                console.log("Telegram WebApp not initialized");
+            }
         });
 
-        startButton.addEventListener('click', () => {
-            startButton.disabled = true;
-            const cardHeight = 120; // Высота карточки + margin
-            const totalHeight = extendedParticipants.length * cardHeight;
-            const randomIndex = Math.floor(Math.random() * participants.length);
-            const stopPosition = (participants.length + randomIndex) * cardHeight; // Остановка в середине списка
-            cardsDiv.style.top = `-${stopPosition}px`;
+        // Отправка данных через Telegram WebApp
+        function sendViaTelegramWebApp(data, attempt = 1, maxAttempts = 3) {
+            if (!window.Telegram?.WebApp) {
+                console.log(`Attempt ${attempt}: Telegram WebApp not available`);
+                return false;
+            }
+            try {
+                window.Telegram.WebApp.sendData(JSON.stringify(data));
+                console.log(`Attempt ${attempt}: Data sent via sendData: ${JSON.stringify(data)}`);
+                return true;
+            } catch (e) {
+                console.log(`Attempt ${attempt}: Failed to send data via sendData: ${e}`);
+                if (attempt < maxAttempts) {
+                    setTimeout(() => sendViaTelegramWebApp(data, attempt + 1, maxAttempts), 2000);
+                }
+                return false;
+            }
+        }
+
+        // Обработчик кнопки "Крутить"
+        spinButton.addEventListener('click', () => {
+            if (isSpinning || participants.length === 0) return;
+            isSpinning = true;
+            spinButton.disabled = true;
+            spinButton.style.display = 'none';
+            resultDiv.textContent = '';
+            resultDiv.innerHTML = '';
+
+            cardsTrack.style.transition = 'transform 5s cubic-bezier(0.22, 0.92, 0.7, 1.0)';
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+            let random = Math.random() * totalWeight;
+            let prizeIndex = 0;
+            for (let i = 0; i < weights.length; i++) {
+                random -= weights[i];
+                if (random <= 0) {
+                    prizeIndex = i;
+                    break;
+                }
+            }
+            const winnerIndex = Math.floor(Math.random() * participants.length);
+            const winner = participants[winnerIndex];
+            const prize = prizes[prizeIndex];
+
+            const minSpins = 3 * participants.length * cardHeight;
+            const randomExtraSpins = Math.floor(Math.random() * 3 + 3) * participants.length * cardHeight;
+            const finalPosition = -(winnerIndex * cardHeight + minSpins + randomExtraSpins);
+
+            cardsTrack.style.transform = `translateY(${finalPosition}px)`;
+            currentPosition = finalPosition % (participants.length * cardHeight);
 
             setTimeout(() => {
-                const winner = participants[randomIndex];
-                resultDiv.textContent = `Победитель: ID ${winner}`;
-                // Отправка результата боту (аналогично колесу, через sendData или API)
-                window.Telegram.WebApp.sendData(JSON.stringify({ draw_id: draw_id, winner: winner }));
+                const cards = document.querySelectorAll('.card');
+                cards.forEach(card => card.classList.remove('stop'));
+                const visibleCardIndex = Math.abs(Math.round(currentPosition / cardHeight)) % participants.length;
+                const visibleCard = cards[visibleCardIndex];
+                if (visibleCard) {
+                    visibleCard.classList.add('stop');
+                }
+
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.innerHTML = `Победитель: ${winner.username}<br>Приз: ${prize}`;
+                    resultDiv.style.opacity = '1';
+                    sendViaTelegramWebApp({
+                        giveaway_id: giveaway_id,
+                        winner_id: winner.user_id,
+                        winner_username: winner.username,
+                        prize: prize
+                    });
+                }, 100);
+                isSpinning = false;
+                closeButton.style.display = 'block';
             }, 5000);
+        });
+
+        // Обработчик кнопки "Закрыть"
+        closeButton.addEventListener('click', () => {
+            console.log("Closing Web App");
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.close();
+            }
         });
     </script>
 </body>
