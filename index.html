@@ -55,11 +55,11 @@
         .arrow {
             position: absolute;
             top: 50%;
-            left: -20px;
-            transform: translateY(-50%) rotate(-90deg);
+            left: 50%;
+            transform: translate(-50%, -50%);
             border-left: 12px solid transparent;
             border-right: 12px solid transparent;
-            border-top: 20px solid #ffffff;
+            border-bottom: 20px solid #ffffff;
             z-index: 10;
             filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
         }
@@ -86,14 +86,16 @@
             color: #fff;
             text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .card.stop {
-            animation: glow 1s ease-in-out;
+            animation: glow 1s ease-in-out infinite alternate;
         }
         @keyframes glow {
             0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
-            50% { box-shadow: 0 0 20px rgba(255, 215, 0, 1.2); }
-            100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+            100% { box-shadow: 0 0 20px rgba(255, 215, 0, 1.2); }
         }
         .center-button {
             padding: 8px 25px;
@@ -133,6 +135,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            text-align: center;
         }
         #closeButton {
             margin-top: 20px;
@@ -180,7 +183,9 @@
         let participants = [];
         try {
             const encoded = urlParams.get('participants');
+            if (!encoded) throw new Error('No participants data provided');
             participants = JSON.parse(atob(encoded));
+            console.log('Participants loaded:', participants);
         } catch (e) {
             console.error('Failed to parse participants:', e);
             resultDiv.innerHTML = '❌ Ошибка загрузки участников';
@@ -193,23 +198,14 @@
         const weights = [0.4, 0.4, 0.05, 0.05, 0.035, 0.035, 0.015, 0.015];
         const cardHeight = 90; // Высота карточки + отступы
         let isSpinning = false;
-        let currentPosition = 0;
 
-        // Создаем карточки
+        // Создаем карточки (без дублирования)
         function createCards() {
             cardsTrack.innerHTML = '';
             participants.forEach(participant => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.textContent = participant.username;
-                card.dataset.userId = participant.user_id;
-                cardsTrack.appendChild(card);
-            });
-            // Дублируем карточки для бесконечной прокрутки
-            participants.forEach(participant => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.textContent = participant.username;
+                card.textContent = participant.username || `User_${participant.user_id}`;
                 card.dataset.userId = participant.user_id;
                 cardsTrack.appendChild(card);
             });
@@ -230,24 +226,33 @@
                 console.log(`Telegram WebApp initialized, version: ${window.Telegram.WebApp.version}`);
                 window.Telegram.WebApp.ready();
             } else {
-                console.log("Telegram WebApp not initialized");
+                console.error('Telegram WebApp not initialized');
+                resultDiv.innerHTML = '❌ Telegram Web App не инициализирован';
+                spinButton.disabled = true;
+                spinButton.style.display = 'none';
+                closeButton.style.display = 'block';
             }
         });
 
         // Отправка данных через Telegram WebApp
         function sendViaTelegramWebApp(data, attempt = 1, maxAttempts = 3) {
             if (!window.Telegram?.WebApp) {
-                console.log(`Attempt ${attempt}: Telegram WebApp not available`);
+                console.error(`Attempt ${attempt}: Telegram WebApp not available`);
                 return false;
             }
             try {
-                window.Telegram.WebApp.sendData(JSON.stringify(data));
-                console.log(`Attempt ${attempt}: Data sent via sendData: ${JSON.stringify(data)}`);
+                const jsonData = JSON.stringify(data);
+                console.log(`Attempt ${attempt}: Sending data: ${jsonData}`);
+                window.Telegram.WebApp.sendData(jsonData);
+                console.log(`Attempt ${attempt}: Data sent successfully`);
                 return true;
             } catch (e) {
-                console.log(`Attempt ${attempt}: Failed to send data via sendData: ${e}`);
+                console.error(`Attempt ${attempt}: Failed to send data: ${e}`);
                 if (attempt < maxAttempts) {
                     setTimeout(() => sendViaTelegramWebApp(data, attempt + 1, maxAttempts), 2000);
+                } else {
+                    resultDiv.innerHTML = '❌ Ошибка отправки результата';
+                    closeButton.style.display = 'block';
                 }
                 return false;
             }
@@ -277,35 +282,38 @@
             const winner = participants[winnerIndex];
             const prize = prizes[prizeIndex];
 
-            const minSpins = 3 * participants.length * cardHeight;
-            const randomExtraSpins = Math.floor(Math.random() * 3 + 3) * participants.length * cardHeight;
+            const totalCards = participants.length;
+            const minSpins = 3 * totalCards * cardHeight;
+            const randomExtraSpins = Math.floor(Math.random() * 3 + 3) * totalCards * cardHeight;
             const finalPosition = -(winnerIndex * cardHeight + minSpins + randomExtraSpins);
 
             cardsTrack.style.transform = `translateY(${finalPosition}px)`;
-            currentPosition = finalPosition % (participants.length * cardHeight);
 
             setTimeout(() => {
                 const cards = document.querySelectorAll('.card');
                 cards.forEach(card => card.classList.remove('stop'));
-                const visibleCardIndex = Math.abs(Math.round(currentPosition / cardHeight)) % participants.length;
+                const visibleCardIndex = Math.abs(Math.round(finalPosition / cardHeight)) % totalCards;
                 const visibleCard = cards[visibleCardIndex];
                 if (visibleCard) {
                     visibleCard.classList.add('stop');
+                    visibleCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
                 }
 
                 resultDiv.style.opacity = '0';
                 setTimeout(() => {
-                    resultDiv.innerHTML = `Победитель: ${winner.username}<br>Приз: ${prize}`;
+                    resultDiv.innerHTML = `Победитель: ${winner.username || `User_${winner.user_id}`}<br>Приз: ${prize}`;
                     resultDiv.style.opacity = '1';
-                    sendViaTelegramWebApp({
+                    const data = {
                         giveaway_id: giveaway_id,
                         winner_id: winner.user_id,
-                        winner_username: winner.username,
+                        winner_username: winner.username || `User_${winner.user_id}`,
                         prize: prize
-                    });
+                    };
+                    console.log('Preparing to send data:', data);
+                    sendViaTelegramWebApp(data);
+                    closeButton.style.display = 'block';
                 }, 100);
                 isSpinning = false;
-                closeButton.style.display = 'block';
             }, 5000);
         });
 
